@@ -1,10 +1,12 @@
-import * as XLSX from 'xlsx';
 import { LedgerConfig, ProcessedData } from './LedgerProcessor';
 
 export const processLedgerFile = async (
   file: File,
   config: LedgerConfig
 ): Promise<ProcessedData> => {
+  // Lazy load xlsx library only when processing a file
+  const XLSX = await import('xlsx');
+  
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 

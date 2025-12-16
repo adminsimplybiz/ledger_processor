@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
 import { processLedgerFile } from './ledgerLogic';
 import FileUpload from './components/FileUpload';
 import ConfigurationPanel from './components/ConfigurationPanel';
@@ -57,12 +56,15 @@ const LedgerProcessor: React.FC = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!processedData || !processedData.success) {
       alert('No processed data available to download');
       return;
     }
 
+    // Lazy load xlsx library only when needed
+    const XLSX = await import('xlsx');
+    
     // Create workbook and download
     const ws = XLSX.utils.json_to_sheet(processedData.data);
     const wb = XLSX.utils.book_new();
