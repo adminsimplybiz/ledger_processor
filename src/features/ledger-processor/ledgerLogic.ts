@@ -47,7 +47,7 @@ export const processLedgerFile = async (
 };
 
 interface CachedHeader {
-  date: string;
+  date: string | number;
   headerGroupName: string;
 }
 
@@ -78,20 +78,23 @@ const transformLedgerData = (
       const costCentre = row[config.costCentreIndex]?.toString().trim() || '';
 
       result.push({
-        Date: cachedHeader.date,
+        Date: formatDate(cachedHeader.date),
         'Header Group Name': cachedHeader.headerGroupName,
         'Cost Centre': costCentre,
         'Transaction Type': transactionType,
         'Amount': normalizedAmount,
-        'Original Amount': amount,
         'Description': row[4]?.toString().trim() || '',
       });
     } else {
       // This is a header/context row - update cache
       // Check if row has a date (typically in column A, index 0)
-      const potentialDate = row[0]?.toString().trim();
-      if (potentialDate && isValidDate(potentialDate)) {
-        cachedHeader.date = potentialDate;
+      const potentialDate = row[0];
+      if (potentialDate !== undefined && potentialDate !== null && potentialDate !== '') {
+        // Accept both numeric (Excel serial) and string dates
+        const dateValue = typeof potentialDate === 'number' ? potentialDate : potentialDate.toString().trim();
+        if (dateValue && (typeof dateValue === 'number' || isValidDate(dateValue))) {
+          cachedHeader.date = dateValue;
+        }
       }
 
       // Check if row has a header group name in the configured column
@@ -109,5 +112,54 @@ const isValidDate = (dateString: string): boolean => {
   // Try to parse as date - Excel dates might be in various formats
   const date = new Date(dateString);
   return !isNaN(date.getTime());
+};
+
+const formatDate = (dateValue: string | number): string => {
+  if (!dateValue) return '';
+  
+  // If it's already a string, check if it's in the expected format (D-MMM-YY or similar)
+  if (typeof dateValue === 'string') {
+    const trimmed = dateValue.trim();
+    // If it looks like a date string (contains month abbreviation), use it as-is
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const hasMonthAbbr = monthNames.some(month => trimmed.includes(month));
+    if (hasMonthAbbr) {
+      return trimmed; // Preserve the original format
+    }
+  }
+  
+  // Check if it's an Excel serial date (numeric)
+  const numericValue = typeof dateValue === 'number' ? dateValue : parseFloat(dateValue.toString());
+  
+  if (!isNaN(numericValue) && numericValue > 0 && numericValue < 1000000) {
+    // Excel serial date conversion (reasonable range check)
+    // Excel epoch: January 1, 1900 (but incorrectly treats 1900 as leap year)
+    // Subtract 2 to account for Excel's leap year bug and 0-indexing
+    const excelEpoch = new Date(1900, 0, 1).getTime();
+    const jsDate = new Date((numericValue - 2) * 86400000 + excelEpoch);
+    
+    // Format as D-MMM-YY (e.g., 3-Apr-25)
+    const day = jsDate.getDate(); // No padding, single digit is fine
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[jsDate.getMonth()];
+    const year = String(jsDate.getFullYear()).slice(-2); // Last 2 digits of year
+    
+    return `${day}-${month}-${year}`;
+  }
+  
+  // If it's a string that can be parsed as a date, format it
+  if (typeof dateValue === 'string') {
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      const day = date.getDate();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = monthNames[date.getMonth()];
+      const year = String(date.getFullYear()).slice(-2);
+      return `${day}-${month}-${year}`;
+    }
+  }
+  
+  // Return as-is if we can't parse it
+  return dateValue.toString();
 };
 
