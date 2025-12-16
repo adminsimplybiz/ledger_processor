@@ -80,12 +80,11 @@ const transformLedgerData = (
       const costCentre = row[config.costCentreIndex]?.toString().trim() || '';
 
       result.push({
-        Date: formatDate(cachedHeader.date),
-        'Header Group Name': cachedHeader.headerGroupName,
-        'Cost Centre': costCentre,
-        'Transaction Type': transactionType,
+        'Date': cachedHeader.date || 'HEADER ERROR: Date Missing',
+        'Header Group Name': cachedHeader.headerGroupName || 'HEADER ERROR: Group Missing',
         'Amount': normalizedAmount,
-        'Description': row[4]?.toString().trim() || '',
+        'Cost Centre': costCentre || 'N/A',
+        'Vch Type (D)': row[3]?.toString().trim() || '',
       });
     } else {
       // This is a header/context row - update cache
