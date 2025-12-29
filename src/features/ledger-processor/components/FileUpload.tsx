@@ -3,9 +3,10 @@ import React, { useRef } from 'react';
 interface FileUploadProps {
   onFileChange: (file: File) => void;
   selectedFile: File | null;
+  label?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileChange, selectedFile }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onFileChange, selectedFile, label = 'Upload Ledger File' }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,7 +23,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileChange, selectedFile }) =
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">
-        Upload Ledger File
+        {label}
       </label>
       <div className="flex items-center space-x-4">
         <input
