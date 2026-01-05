@@ -129,11 +129,22 @@ const PayrollProcessor: React.FC = () => {
           cell.font = { bold: true };
         });
       } else {
-        // Make Row Labels column bold for all data rows
+        // Make Row Labels, Cost Centre As Per Books, and Direct/Indirect columns bold for all data rows
         const rowLabelsIndex = headers.indexOf('Row Labels');
+        const costCentreAsPerBooksIndex = headers.indexOf('Cost Centre As Per Books');
+        const directIndirectIndex = headers.indexOf('Direct/Indirect');
+        
         if (rowLabelsIndex >= 0) {
           const rowLabelCell = dataRow.getCell(rowLabelsIndex + 1); // ExcelJS uses 1-based indexing
           rowLabelCell.font = { bold: true };
+        }
+        if (costCentreAsPerBooksIndex >= 0) {
+          const costCentreCell = dataRow.getCell(costCentreAsPerBooksIndex + 1);
+          costCentreCell.font = { bold: true };
+        }
+        if (directIndirectIndex >= 0) {
+          const directIndirectCell = dataRow.getCell(directIndirectIndex + 1);
+          directIndirectCell.font = { bold: true };
         }
       }
     });
@@ -210,7 +221,7 @@ const PayrollProcessor: React.FC = () => {
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
           <li>Groups data by Cost Centre</li>
           <li>Calculates sums for all financial columns</li>
-          <li>Outputs exactly 28 columns in standardized format</li>
+          <li>Outputs exactly 30 columns in standardized format</li>
           <li>Handles missing columns (defaults to 0)</li>
           <li>Cleans numeric values (removes commas, handles strings)</li>
         </ul>

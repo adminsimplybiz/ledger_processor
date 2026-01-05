@@ -4,6 +4,46 @@ export interface ProcessedPayrollData {
   message: string;
 }
 
+// Static mapping: Row Labels (Cost Centre) -> Cost Centre As Per Books
+const COST_CENTRE_AS_PER_BOOKS_MAP: { [key: string]: string } = {
+  'Admin': 'Facilities',
+  'AI/ML Delivery': 'AL/MI Delivery',
+  'Cloud': 'Cloud Solutions',
+  'Corporate': 'Corporate',
+  'Cyber Security': 'Cyber Security',
+  'Data & Insights': 'Data Engeering',
+  'Executive Management': 'Corporate',
+  'Finance': 'Finance',
+  'HR': 'HR',
+  'Internal IT': 'IT Hyderabad',
+  'Product Engeering': 'Product Engeering',
+  'Product Engineering': 'Product Engeering',
+  'Quality Engineering': 'Quality Engineering',
+  'Sales': 'Sales',
+  'Staffing': 'Eknazar',
+  'Talent Acquisition': 'Talent Acquisation'
+};
+
+// Static mapping: Row Labels (Cost Centre) -> Direct/Indirect
+const DIRECT_INDIRECT_MAP: { [key: string]: string } = {
+  'Admin': 'Indirect',
+  'AI/ML Delivery': 'Direct',
+  'Cloud': 'Direct',
+  'Corporate': 'Indirect',
+  'Cyber Security': 'Direct',
+  'Data & Insights': 'Direct',
+  'Executive Management': 'Indirect',
+  'Finance': 'Indirect',
+  'HR': 'Indirect',
+  'Internal IT': 'Indirect',
+  'Product Engeering': 'Direct',
+  'Product Engineering': 'Direct',
+  'Quality Engineering': 'Direct',
+  'Sales': 'Indirect',
+  'Staffing': 'Indirect',
+  'Talent Acquisition': 'Indirect'
+};
+
 const cleanNumericValue = (value: any): number => {
   if (value === null || value === undefined || value === '') {
     return 0;
@@ -22,9 +62,11 @@ const cleanNumericValue = (value: any): number => {
   return isNaN(num) ? 0 : num;
 };
 
-// Define the 28 required output columns in exact order
+// Define the 30 required output columns in exact order
 const REQUIRED_OUTPUT_COLUMNS = [
   'Row Labels',
+  'Cost Centre As Per Books',
+  'Direct/Indirect',
   'Sum of Basic',
   'Sum of Food Coupon',
   'Sum of Basic Arrears',
@@ -138,6 +180,9 @@ export const processPayrollFile = async (
           );
         }
 
+        // Note: We use static mappings for Cost Centre As Per Books and Direct/Indirect
+        // These don't need to be read from the input file
+
         // Create a map of column name to index for quick lookup
         const columnIndexMap: { [key: string]: number } = {};
         headers.forEach((header, index) => {
@@ -171,12 +216,19 @@ export const processPayrollFile = async (
 
         for (const costCentre in groupedData) {
           const rows = groupedData[costCentre];
+          
           const outputRow: any = {
             'Row Labels': costCentre
           };
 
-          // Process each required output column (skip "Row Labels")
-          for (let i = 1; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
+          // Add Cost Centre As Per Books using static mapping
+          outputRow['Cost Centre As Per Books'] = COST_CENTRE_AS_PER_BOOKS_MAP[costCentre] || costCentre;
+
+          // Add Direct/Indirect using static mapping
+          outputRow['Direct/Indirect'] = DIRECT_INDIRECT_MAP[costCentre] || '';
+
+          // Process each required output column (skip "Row Labels", "Cost Centre As Per Books", "Direct/Indirect")
+          for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
             const outputColumn = REQUIRED_OUTPUT_COLUMNS[i];
             const sourceColumn = COLUMN_MAPPING[outputColumn];
             
@@ -203,22 +255,29 @@ export const processPayrollFile = async (
           result.push(outputRow);
         }
 
-        // Ensure output has exactly 28 columns in the correct order
+        // Ensure output has exactly 30 columns in the correct order
         const finalResult = result.map(row => {
           const orderedRow: any = {};
           REQUIRED_OUTPUT_COLUMNS.forEach(col => {
-            orderedRow[col] = row[col] !== undefined ? row[col] : 0;
+            // For non-numeric columns, use empty string as default, for numeric columns use 0
+            if (col === 'Row Labels' || col === 'Cost Centre As Per Books' || col === 'Direct/Indirect') {
+              orderedRow[col] = row[col] !== undefined ? row[col] : '';
+            } else {
+              orderedRow[col] = row[col] !== undefined ? row[col] : 0;
+            }
           });
           return orderedRow;
         });
 
         // Add Grand Total row
         const grandTotalRow: any = {
-          'Row Labels': 'Grand Total'
+          'Row Labels': 'Grand Total',
+          'Cost Centre As Per Books': '',
+          'Direct/Indirect': ''
         };
 
         // Sum all numeric columns across all cost centres
-        for (let i = 1; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
+        for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
           const column = REQUIRED_OUTPUT_COLUMNS[i];
           let total = 0;
           
