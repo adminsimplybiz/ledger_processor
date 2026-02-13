@@ -1,51 +1,19 @@
 import { LedgerConfig, ProcessedData } from './LedgerProcessor';
+import { loadWorkbookFromFile, getWorksheet, getSheetRows } from '../../utils/excelReader';
 
 export const processLedgerFile = async (
   file: File,
   config: LedgerConfig
 ): Promise<ProcessedData> => {
-  // Lazy load xlsx library only when processing a file
-  const XLSX = await import('xlsx');
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Get first sheet
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-
-        // Convert to JSON array
-        // sheet_to_json's typings use unknown[][] when header: 1, but our downstream
-        // transformer expects a 2D array of cell-like values, so we safely cast here.
-        const rawData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
-          defval: '',
-        }) as any[][];
-        
-        // Process the data
-        const processed = transformLedgerData(rawData, config);
-        
-        resolve({
-          data: processed,
-          success: true,
-          message: `Successfully processed ${processed.length} transactions`,
-        });
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'));
-    };
-
-    reader.readAsArrayBuffer(file);
-  });
+  const workbook = await loadWorkbookFromFile(file);
+  const worksheet = getWorksheet(workbook);
+  const rawData = getSheetRows(worksheet) as any[][];
+  const processed = transformLedgerData(rawData, config);
+  return {
+    data: processed,
+    success: true,
+    message: `Successfully processed ${processed.length} transactions`,
+  };
 };
 
 interface CachedHeader {

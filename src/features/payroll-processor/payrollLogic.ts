@@ -132,180 +132,111 @@ export const processPayrollFile = async (
   file: File,
   sheetName?: string
 ): Promise<ProcessedPayrollData> => {
-  // Lazy load xlsx library only when processing a file
-  const XLSX = await import('xlsx');
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+  const { loadWorkbookFromFile, getSheetNames, getWorksheet, getSheetRows } = await import('../../utils/excelReader');
+  const workbook = await loadWorkbookFromFile(file);
+  const names = getSheetNames(workbook);
+  const actualSheetName = sheetName && names.includes(sheetName) ? sheetName : names[0];
+  const worksheet = getWorksheet(workbook, actualSheetName);
+  const jsonData = getSheetRows(worksheet) as any[][];
 
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+  if (jsonData.length === 0) {
+    throw new Error('The sheet is empty');
+  }
+
+  const headers = jsonData[0] as string[];
         
-        // Use specified sheet name if provided, otherwise use first sheet
-        let actualSheetName: string;
-        let worksheet;
-        
-        if (sheetName && workbook.SheetNames.includes(sheetName)) {
-          actualSheetName = sheetName;
-          worksheet = workbook.Sheets[sheetName];
-        } else {
-          // Use first sheet if no sheet name specified or sheet not found
-          actualSheetName = workbook.SheetNames[0];
-          worksheet = workbook.Sheets[actualSheetName];
-        }
+  const costCentreIndex = headers.findIndex(
+    (h: string) => h && h.toString().trim() === 'Cost Centre'
+  );
 
-        // Convert to JSON with headers (first row as column names)
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
-          defval: '',
-        }) as any[][];
+  if (costCentreIndex === -1) {
+    throw new Error(
+      `"Cost Centre" column not found in the sheet. Available columns: ${headers.filter(h => h).join(', ')}`
+    );
+  }
 
-        if (jsonData.length === 0) {
-          throw new Error('The sheet is empty');
-        }
-
-        // First row contains headers
-        const headers = jsonData[0] as string[];
-        
-        // Find the index of "Cost Centre" column
-        const costCentreIndex = headers.findIndex(
-          (h: string) => h && h.toString().trim() === 'Cost Centre'
-        );
-
-        if (costCentreIndex === -1) {
-          throw new Error(
-            `"Cost Centre" column not found in the sheet. Available columns: ${headers.filter(h => h).join(', ')}`
-          );
-        }
-
-        // Note: We use static mappings for Cost Centre As Per Books and Direct/Indirect
-        // These don't need to be read from the input file
-
-        // Create a map of column name to index for quick lookup
-        const columnIndexMap: { [key: string]: number } = {};
-        headers.forEach((header, index) => {
-          if (header) {
-            columnIndexMap[header.toString().trim()] = index;
-          }
-        });
-
-        // Group data by Cost Centre
-        const groupedData: { [key: string]: any[][] } = {};
-        
-        // Process data rows (skip header row)
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i];
-          if (!row || row.length === 0) continue;
-
-          const costCentre = row[costCentreIndex];
-          if (costCentre === null || costCentre === undefined || costCentre === '') {
-            continue; // Skip rows without Cost Centre
-          }
-
-          const costCentreKey = costCentre.toString().trim();
-          if (!groupedData[costCentreKey]) {
-            groupedData[costCentreKey] = [];
-          }
-          groupedData[costCentreKey].push(row);
-        }
-
-        // Process each group and create output rows
-        const result: any[] = [];
-
-        for (const costCentre in groupedData) {
-          const rows = groupedData[costCentre];
-          
-          const outputRow: any = {
-            'Row Labels': costCentre
-          };
-
-          // Add Cost Centre As Per Books using static mapping
-          outputRow['Cost Centre As Per Books'] = COST_CENTRE_AS_PER_BOOKS_MAP[costCentre] || costCentre;
-
-          // Add Direct/Indirect using static mapping
-          outputRow['Direct/Indirect'] = DIRECT_INDIRECT_MAP[costCentre] || '';
-
-          // Process each required output column (skip "Row Labels", "Cost Centre As Per Books", "Direct/Indirect")
-          for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
-            const outputColumn = REQUIRED_OUTPUT_COLUMNS[i];
-            const sourceColumn = COLUMN_MAPPING[outputColumn];
-            
-            let sum = 0;
-            
-            if (sourceColumn) {
-              // Trim the source column name to match how it's stored in the map
-              const trimmedSourceColumn = sourceColumn.trim();
-              if (columnIndexMap.hasOwnProperty(trimmedSourceColumn)) {
-                const sourceIndex = columnIndexMap[trimmedSourceColumn];
-                
-                // Sum all values in this column for this Cost Centre
-                for (const row of rows) {
-                  const value = row[sourceIndex];
-                  sum += cleanNumericValue(value);
-                }
-              }
-            }
-            // If column is missing, sum remains 0 (as required)
-
-            outputRow[outputColumn] = sum;
-          }
-
-          result.push(outputRow);
-        }
-
-        // Ensure output has exactly 30 columns in the correct order
-        const finalResult = result.map(row => {
-          const orderedRow: any = {};
-          REQUIRED_OUTPUT_COLUMNS.forEach(col => {
-            // For non-numeric columns, use empty string as default, for numeric columns use 0
-            if (col === 'Row Labels' || col === 'Cost Centre As Per Books' || col === 'Direct/Indirect') {
-              orderedRow[col] = row[col] !== undefined ? row[col] : '';
-            } else {
-              orderedRow[col] = row[col] !== undefined ? row[col] : 0;
-            }
-          });
-          return orderedRow;
-        });
-
-        // Add Grand Total row
-        const grandTotalRow: any = {
-          'Row Labels': 'Grand Total',
-          'Cost Centre As Per Books': '',
-          'Direct/Indirect': ''
-        };
-
-        // Sum all numeric columns across all cost centres
-        for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
-          const column = REQUIRED_OUTPUT_COLUMNS[i];
-          let total = 0;
-          
-          for (const row of finalResult) {
-            total += cleanNumericValue(row[column]);
-          }
-          
-          grandTotalRow[column] = total;
-        }
-
-        // Add grand total row to the result
-        finalResult.push(grandTotalRow);
-
-        resolve({
-          data: finalResult,
-          success: true,
-          message: `Successfully processed ${finalResult.length - 1} cost centres from sheet "${actualSheetName}" (including Grand Total)`,
-        });
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'));
-    };
-
-    reader.readAsArrayBuffer(file);
+  const columnIndexMap: { [key: string]: number } = {};
+  headers.forEach((header, index) => {
+    if (header) {
+      columnIndexMap[header.toString().trim()] = index;
+    }
   });
+
+  const groupedData: { [key: string]: any[][] } = {};
+  for (let i = 1; i < jsonData.length; i++) {
+    const row = jsonData[i];
+    if (!row || row.length === 0) continue;
+
+    const costCentre = row[costCentreIndex];
+    if (costCentre === null || costCentre === undefined || costCentre === '') {
+      continue;
+    }
+
+    const costCentreKey = costCentre.toString().trim();
+    if (!groupedData[costCentreKey]) {
+      groupedData[costCentreKey] = [];
+    }
+    groupedData[costCentreKey].push(row);
+  }
+
+  const result: any[] = [];
+  for (const costCentre in groupedData) {
+    const rows = groupedData[costCentre];
+    const outputRow: any = {
+      'Row Labels': costCentre
+    };
+    outputRow['Cost Centre As Per Books'] = COST_CENTRE_AS_PER_BOOKS_MAP[costCentre] || costCentre;
+    outputRow['Direct/Indirect'] = DIRECT_INDIRECT_MAP[costCentre] || '';
+
+    for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
+      const outputColumn = REQUIRED_OUTPUT_COLUMNS[i];
+      const sourceColumn = COLUMN_MAPPING[outputColumn];
+      let sum = 0;
+      if (sourceColumn) {
+        const trimmedSourceColumn = sourceColumn.trim();
+        if (columnIndexMap.hasOwnProperty(trimmedSourceColumn)) {
+          const sourceIndex = columnIndexMap[trimmedSourceColumn];
+          for (const row of rows) {
+            sum += cleanNumericValue(row[sourceIndex]);
+          }
+        }
+      }
+      outputRow[outputColumn] = sum;
+    }
+    result.push(outputRow);
+  }
+
+  const finalResult = result.map(row => {
+    const orderedRow: any = {};
+    REQUIRED_OUTPUT_COLUMNS.forEach(col => {
+      if (col === 'Row Labels' || col === 'Cost Centre As Per Books' || col === 'Direct/Indirect') {
+        orderedRow[col] = row[col] !== undefined ? row[col] : '';
+      } else {
+        orderedRow[col] = row[col] !== undefined ? row[col] : 0;
+      }
+    });
+    return orderedRow;
+  });
+
+  const grandTotalRow: any = {
+    'Row Labels': 'Grand Total',
+    'Cost Centre As Per Books': '',
+    'Direct/Indirect': ''
+  };
+  for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
+    const column = REQUIRED_OUTPUT_COLUMNS[i];
+    let total = 0;
+    for (const row of finalResult) {
+      total += cleanNumericValue(row[column]);
+    }
+    grandTotalRow[column] = total;
+  }
+  finalResult.push(grandTotalRow);
+
+  return {
+    data: finalResult,
+    success: true,
+    message: `Successfully processed ${finalResult.length - 1} cost centres from sheet "${actualSheetName}" (including Grand Total)`,
+  };
 };
 

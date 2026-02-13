@@ -62,14 +62,23 @@ const LedgerProcessor: React.FC = () => {
       return;
     }
 
-    // Lazy load xlsx library only when needed
-    const XLSX = await import('xlsx');
-    
-    // Create workbook and download
-    const ws = XLSX.utils.json_to_sheet(processedData.data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Structured Ledger');
-    XLSX.writeFile(wb, 'structured_ledger_output.xlsx');
+    const ExcelJS = await import('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Structured Ledger');
+    const rows = processedData.data as Record<string, unknown>[];
+    if (rows.length > 0) {
+      const headers = Object.keys(rows[0]);
+      ws.addRow(headers);
+      rows.forEach((row) => ws.addRow(headers.map((h) => row[h] ?? '')));
+    }
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'structured_ledger_output.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

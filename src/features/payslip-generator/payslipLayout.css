@@ -1,0 +1,169 @@
+/* Payslip layout – matches reference PDF design (A4, main box, info grid, financial table) */
+.payslip-a4 {
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+  padding: 10mm 15mm;
+  box-sizing: border-box;
+  font-family: 'Times New Roman', Times, serif;
+  color: #000;
+  position: relative;
+}
+
+.payslip-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 5px;
+  position: relative;
+}
+
+.payslip-logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.payslip-logo img {
+  height: 40px;
+  display: block;
+}
+
+.payslip-company {
+  text-align: center;
+  width: 100%;
+}
+
+.payslip-company-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 10px 0 5px 0;
+  text-transform: uppercase;
+}
+
+.payslip-company-address {
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  color: #000;
+}
+
+.payslip-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+  margin: 10px 0 2px 0;
+}
+
+.payslip-main-box {
+  border: 2px solid #000;
+  margin-top: 2px;
+}
+
+.payslip-info-section {
+  display: flex;
+  border-bottom: 1px solid #000;
+}
+
+.payslip-info-col {
+  padding: 8px 10px;
+  width: 50%;
+  font-size: 12px;
+}
+
+.payslip-info-col.left {
+  border-right: 1px solid #000;
+}
+
+.payslip-info-row {
+  display: flex;
+  margin-bottom: 3px;
+}
+
+.payslip-info-row .label {
+  width: 160px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.payslip-info-row .value {
+  flex: 1;
+}
+
+.payslip-financial-table {
+  width: 100%;
+  font-size: 12px;
+}
+
+.payslip-table-header,
+.payslip-table-row {
+  display: flex;
+}
+
+.payslip-table-header {
+  border-bottom: 1px solid #000;
+  font-weight: bold;
+}
+
+.payslip-col-earn-label {
+  flex: 2;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.payslip-col-earn-val {
+  flex: 1;
+  padding: 4px 6px;
+  text-align: right;
+}
+
+.payslip-col-ded-label {
+  flex: 2;
+  padding: 4px 6px;
+  text-align: left;
+  border-left: 1px solid #000;
+}
+
+.payslip-col-ded-val {
+  flex: 1;
+  padding: 4px 6px;
+  text-align: right;
+}
+
+.payslip-gross-row {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  font-weight: bold;
+}
+
+.payslip-total-earnings-row {
+  border-top: 1px solid #000;
+  font-weight: bold;
+}
+
+.payslip-net-row {
+  border-top: 1px solid #000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.payslip-net-words {
+  padding: 4px 8px 8px 8px;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.payslip-footer-note {
+  font-size: 10px;
+  color: #666;
+  margin-top: 8px;
+}
+
+.payslip-footer-company {
+  font-size: 10px;
+  text-align: center;
+  margin-top: 2px;
+}

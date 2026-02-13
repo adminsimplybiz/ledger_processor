@@ -48,3 +48,7 @@ Thumbs.db
 
 .vercel
 .env*.local
+
+# Sample/data files at project root
+/*.xlsx
+/*.pdf

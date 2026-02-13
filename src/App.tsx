@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
 import LedgerProcessor from './features/ledger-processor/LedgerProcessor';
 import PayrollProcessor from './features/payroll-processor/PayrollProcessor';
+import PayslipGenerator from './features/payslip-generator/PayslipGenerator';
 
 function App() {
-  const [activeFeature, setActiveFeature] = useState<'ledger' | 'payroll'>('ledger');
+  const [activeFeature, setActiveFeature] = useState<'ledger' | 'payroll' | 'payslip'>('ledger');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         <header className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Ledger Data Processor Pro
-          </h1>
-          <p className="text-gray-600">
-            Transform complex financial data into structured, analysis-ready formats
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2">
+            <img
+              src="/finance-workbench-logo.png"
+              alt="Finance Workbench - A product of SimplyBiz"
+              className="max-w-full h-auto block"
+              style={{ maxHeight: 100 }}
+            />
+            <p className="text-gray-600 text-sm">
+              Your books, payroll & slips — one spot. No cap.
+            </p>
+          </div>
         </header>
 
         {/* Feature Selection Tabs */}
@@ -39,10 +45,22 @@ function App() {
           >
             Payroll Processor
           </button>
+          <button
+            onClick={() => setActiveFeature('payslip')}
+            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+              activeFeature === 'payslip'
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Payslip Generator
+          </button>
         </div>
 
         {/* Active Feature Component */}
-        {activeFeature === 'ledger' ? <LedgerProcessor /> : <PayrollProcessor />}
+        {activeFeature === 'ledger' && <LedgerProcessor />}
+        {activeFeature === 'payroll' && <PayrollProcessor />}
+        {activeFeature === 'payslip' && <PayslipGenerator />}
       </div>
     </div>
   );
