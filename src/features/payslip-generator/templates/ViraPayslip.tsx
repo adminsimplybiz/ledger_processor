@@ -89,7 +89,10 @@ export const ViraPayslip: React.FC<Props> = ({ data }) => {
       <div className="payslip-a4">
         <div className="header-container">
           <div className="logo-area">
-            <img src={(PAYSLIP_LOGOS as Record<string, string>).vira ?? '/Vira%20insight%20logo.png'} alt="Vira Insight" />
+            <img
+              src={(PAYSLIP_LOGOS as Record<string, string>).vira || ''}
+              alt="Vira Insight"
+            />
           </div>
           <div className="company-details">
             <h2 className="company-name">{data.companyName}</h2>

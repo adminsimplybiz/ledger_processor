@@ -52,3 +52,6 @@ Thumbs.db
 # Sample/data files at project root
 /*.xlsx
 /*.pdf
+
+# Logo backup (script creates this; don't commit)
+public/finance-workbench-logo-original.png

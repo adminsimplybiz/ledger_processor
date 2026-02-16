@@ -38,8 +38,7 @@ const PayrollProcessor: React.FC = () => {
             setShowSheetInput(false);
             setSelectedSheetName(sheets[0] || '');
           }
-        } catch (error) {
-          console.error('Error reading file:', error);
+        } catch {
           setShowSheetInput(false);
           setSelectedSheetName('');
         }
@@ -51,8 +50,7 @@ const PayrollProcessor: React.FC = () => {
       };
       
       reader.readAsArrayBuffer(selectedFile);
-    } catch (error) {
-      console.error('Error loading xlsx library:', error);
+    } catch {
       setShowSheetInput(false);
       setSelectedSheetName('');
     }
