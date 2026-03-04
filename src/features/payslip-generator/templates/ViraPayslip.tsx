@@ -52,7 +52,7 @@ export const ViraPayslip: React.FC<Props> = ({ data }) => {
   return (
     <>
       <style>{`
-        .payslip-a4 { width: 210mm; min-height: 297mm; background: white; padding: 10mm 15mm; box-sizing: border-box; font-family: 'Times New Roman', Times, serif; color: #000; position: relative; }
+        .payslip-a4 { width: 210mm; min-height: 297mm; background: white; padding: 10mm 15mm; box-sizing: border-box; font-family: Arial, sans-serif !important; color: #000; position: relative; }
         .header-container { display: flex; justify-content: center; align-items: flex-start; margin-bottom: 5px; position: relative; }
         .logo-area { position: absolute; left: 0; top: 0; width: 100px; height: 100px; display: flex; align-items: center; justify-content: flex-start; }
         .logo-area img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
@@ -60,27 +60,25 @@ export const ViraPayslip: React.FC<Props> = ({ data }) => {
         .company-name { font-size: 16px; font-weight: bold; margin: 10px 0 5px 0; text-transform: uppercase; }
         .company-address { font-size: 12px; line-height: 1.5; margin: 0; color: #000; white-space: pre-line; }
         .payslip-title { text-align: center; font-weight: bold; font-size: 13px; margin: 10px 0 8px 0; }
-        .main-box { border: 2px solid #000; margin-top: 8px; }
-        .info-section { display: flex; border-bottom: 1px solid #000; }
+        .main-box { border: 2px solid #000; margin-top: 8px; box-sizing: border-box; }
+        .info-section { display: flex; border-bottom: 1px solid #000; box-sizing: border-box; }
         .info-col { padding: 10px; width: 50%; }
         .left-col { border-right: 1px solid #000; }
         .info-row { display: flex; margin-bottom: 3px; font-size: 12px; }
         .info-row .label { width: 140px; display: inline-block; }
         .info-row .value { flex: 1; }
-        .financial-table { width: 100%; font-size: 12px; }
-        .table-header-row, .table-row { display: flex; }
-        .table-header-row { border-bottom: 1px solid #000; background: white; }
-        .col-earn-label { flex: 2; padding: 2px 5px; text-align: left; }
-        .col-earn-val { flex: 1; padding: 2px 5px; text-align: right; }
-        .col-ded-label { flex: 2; padding: 2px 5px; text-align: left; border-left: 1px solid #000; }
-        .col-ded-val { flex: 1; padding: 2px 5px; text-align: right; }
-        .th { font-weight: normal; }
-        .gross-row { border-top: 1px solid #000; border-bottom: 1px solid #000; }
+        .financial-table { width: 100%; font-size: 12px; box-sizing: border-box; table-layout: fixed; border-collapse: collapse; }
+        .financial-table th, .financial-table td { padding: 10px 12px !important; vertical-align: middle !important; line-height: 1.2; box-sizing: border-box; border: none; }
+        .financial-table th { border-bottom: 1px solid #000; font-weight: normal; }
+        .financial-table .col-earn-label { width: 40%; text-align: left; }
+        .financial-table .col-earn-val { width: 10%; text-align: right; }
+        .financial-table .col-earn-val.center { text-align: center; }
+        .financial-table .col-ded-label { width: 30%; text-align: left; border-left: 1px solid #000; }
+        .financial-table .col-ded-val { width: 10%; text-align: right; }
+        .financial-table .col-ded-val.center { text-align: center; }
+        .gross-row td { border-top: 1px solid #000; border-bottom: 1px solid #000; }
         .bold { font-weight: bold; }
-        .employer-section { display: flex; }
-        .employer-left { flex: 1; display: flex; flex-direction: column; }
-        .employer-right { width: 43%; border-left: 1px solid #000; }
-        .total-earn-row { border-top: 1px solid #000; }
+        .total-earn-row td { border-top: 1px solid #000; }
         .net-pay-row { border-top: 1px solid #000; display: flex; justify-content: space-between; padding: 8px 10px; font-weight: bold; font-size: 13px; }
         .net-words { padding: 4px 10px 10px 10px; font-style: italic; font-size: 12px; }
         .footer-note { font-size: 10px; color: #666; margin-top: 8px; }
@@ -135,59 +133,66 @@ export const ViraPayslip: React.FC<Props> = ({ data }) => {
             </div>
           </div>
 
-          <div className="financial-table">
-            <div className="table-header-row">
-              <div className="th col-earn-label">Earnings</div>
-              <div className="th col-earn-val">Full</div>
-              <div className="th col-earn-val">Actual</div>
-              <div className="th col-ded-label">Deductions</div>
-              <div className="th col-ded-val">Actual</div>
-            </div>
-
-            <div className="table-body">
+          <table className="financial-table">
+            <colgroup>
+              <col className="col-earn-label" />
+              <col className="col-earn-val" />
+              <col className="col-earn-val" />
+              <col className="col-ded-label" />
+              <col className="col-ded-val" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className="col-earn-label">Earnings</th>
+                <th className="col-earn-val center">Full</th>
+                <th className="col-earn-val center">Actual</th>
+                <th className="col-ded-label">Deductions</th>
+                <th className="col-ded-val center">Actual</th>
+              </tr>
+            </thead>
+            <tbody>
               {rows.map((row, idx) => (
-                <div className="table-row" key={idx}>
-                  <div className="td col-earn-label">{row.earning.label}</div>
-                  <div className="td col-earn-val">{row.earning.full}</div>
-                  <div className="td col-earn-val">{row.earning.actual}</div>
-                  <div className="td col-ded-label">{row.deduction.label}</div>
-                  <div className="td col-ded-val">{row.deduction.amount}</div>
-                </div>
+                <tr key={idx}>
+                  <td className="col-earn-label">{row.earning.label}</td>
+                  <td className="col-earn-val">{row.earning.full}</td>
+                  <td className="col-earn-val">{row.earning.actual}</td>
+                  <td className="col-ded-label">{row.deduction.label}</td>
+                  <td className="col-ded-val">{row.deduction.amount}</td>
+                </tr>
               ))}
 
-              <div className="table-row gross-row">
-                <div className="td col-earn-label bold">Gross</div>
-                <div className="td col-earn-val bold">{formatNum(data.grossEarning)}</div>
-                <div className="td col-earn-val bold">{formatNum(data.grossEarning)}</div>
-                <div className="td col-ded-label bold">Total Deductions</div>
-                <div className="td col-ded-val bold">{formatNum(data.totalDeductions)}</div>
-              </div>
+              <tr className="gross-row">
+                <td className="col-earn-label bold">Gross</td>
+                <td className="col-earn-val bold">{formatNum(data.grossEarning)}</td>
+                <td className="col-earn-val bold">{formatNum(data.grossEarning)}</td>
+                <td className="col-ded-label bold">Total Deductions</td>
+                <td className="col-ded-val bold">{formatNum(data.totalDeductions)}</td>
+              </tr>
 
-              <div className="employer-section">
-                <div className="employer-left">
-                  {employerComponents.map((comp, i) => (
-                    <div className="table-row" key={i}>
-                      <div className="td col-earn-label">{comp.label}</div>
-                      <div className="td col-earn-val">{comp.full}</div>
-                      <div className="td col-earn-val">{comp.actual}</div>
-                    </div>
-                  ))}
-                  <div className="table-row total-earn-row">
-                    <div className="td col-earn-label bold">Total Earnings</div>
-                    <div className="td col-earn-val bold">{formatNum(data.totalEarnings)}</div>
-                    <div className="td col-earn-val bold">{formatNum(data.totalEarnings)}</div>
-                  </div>
-                </div>
-                <div className="employer-right"></div>
-              </div>
-            </div>
-            
-            <div className="net-pay-row">
-              <div className="net-text">Net Pay for the month ( Total Earnings - Total Deductions):</div>
-              <div className="net-val">{formatNum(data.netPay)}</div>
-            </div>
-            <div className="net-words">({numberToWords(Math.round(data.netPay))})</div>
+              {employerComponents.map((comp, i) => (
+                <tr key={i}>
+                  <td className="col-earn-label">{comp.label}</td>
+                  <td className="col-earn-val">{comp.full}</td>
+                  <td className="col-earn-val">{comp.actual}</td>
+                  <td className="col-ded-label"></td>
+                  <td className="col-ded-val"></td>
+                </tr>
+              ))}
+              <tr className="total-earn-row">
+                <td className="col-earn-label bold">Total Earnings</td>
+                <td className="col-earn-val bold">{formatNum(data.totalEarnings)}</td>
+                <td className="col-earn-val bold">{formatNum(data.totalEarnings)}</td>
+                <td className="col-ded-label"></td>
+                <td className="col-ded-val"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="net-pay-row">
+            <div className="net-text">Net Pay for the month ( Total Earnings - Total Deductions):</div>
+            <div className="net-val">{formatNum(data.netPay)}</div>
           </div>
+          <div className="net-words">({numberToWords(Math.round(data.netPay))})</div>
         </div>
         
         <div className="footer-note">This is a system generated payslip and does not require signature</div>
