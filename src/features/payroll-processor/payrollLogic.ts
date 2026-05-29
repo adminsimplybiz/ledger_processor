@@ -162,6 +162,12 @@ export const processPayrollFile = async (
     }
   });
 
+  // Detect any extra source columns present in sheet that are not part of our COLUMN_MAPPING
+  const mappedSourceColumns = Object.values(COLUMN_MAPPING).map(s => String(s ?? '').trim().toLowerCase());
+  const extraSourceColumns = headers
+    .map(h => String(h ?? '').trim())
+    .filter(h => h && !mappedSourceColumns.includes(h.toLowerCase()) && h.trim().toLowerCase() !== 'cost centre');
+
   const groupedData: { [key: string]: any[][] } = {};
   for (let i = 1; i < jsonData.length; i++) {
     const row = jsonData[i];
@@ -203,33 +209,50 @@ export const processPayrollFile = async (
       }
       outputRow[outputColumn] = sum;
     }
+    // compute sums for extra source columns and add them using the original header name
+    for (const extraCol of extraSourceColumns) {
+      let sum = 0;
+      const idx = columnIndexMap[extraCol];
+      if (idx !== undefined) {
+        for (const row of rows) {
+          sum += cleanNumericValue(row[idx]);
+        }
+      }
+      outputRow[extraCol] = sum;
+    }
     result.push(outputRow);
   }
+  // Build final ordered columns: include required columns only when their source exists; then append any extra source columns
+  const finalColumns: string[] = ['Row Labels', 'Cost Centre As Per Books', 'Direct/Indirect'];
+  for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
+    const out = REQUIRED_OUTPUT_COLUMNS[i];
+    const source = COLUMN_MAPPING[out];
+    if (source && columnIndexMap.hasOwnProperty(source.trim())) {
+      finalColumns.push(out);
+    }
+  }
+  // append extra source columns (original headers)
+  finalColumns.push(...extraSourceColumns);
 
   const finalResult = result.map(row => {
     const orderedRow: any = {};
-    REQUIRED_OUTPUT_COLUMNS.forEach(col => {
+    for (const col of finalColumns) {
       if (col === 'Row Labels' || col === 'Cost Centre As Per Books' || col === 'Direct/Indirect') {
         orderedRow[col] = row[col] !== undefined ? row[col] : '';
       } else {
         orderedRow[col] = row[col] !== undefined ? row[col] : 0;
       }
-    });
+    }
     return orderedRow;
   });
 
-  const grandTotalRow: any = {
-    'Row Labels': 'Grand Total',
-    'Cost Centre As Per Books': '',
-    'Direct/Indirect': ''
-  };
-  for (let i = 3; i < REQUIRED_OUTPUT_COLUMNS.length; i++) {
-    const column = REQUIRED_OUTPUT_COLUMNS[i];
+  const grandTotalRow: any = { 'Row Labels': 'Grand Total', 'Cost Centre As Per Books': '', 'Direct/Indirect': '' };
+  for (const col of finalColumns.slice(3)) {
     let total = 0;
     for (const row of finalResult) {
-      total += cleanNumericValue(row[column]);
+      total += cleanNumericValue(row[col]);
     }
-    grandTotalRow[column] = total;
+    grandTotalRow[col] = total;
   }
   finalResult.push(grandTotalRow);
 

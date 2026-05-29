@@ -219,8 +219,8 @@ const PayrollProcessor: React.FC = () => {
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
           <li>Groups data by Cost Centre</li>
           <li>Calculates sums for all financial columns</li>
-          <li>Outputs exactly 30 columns in standardized format</li>
-          <li>Handles missing columns (defaults to 0)</li>
+          <li>Outputs dynamic columns based on the sheet (preserves configured fields if present)</li>
+          <li>Missing configured fields are omitted from output (not rendered)</li>
           <li>Cleans numeric values (removes commas, handles strings)</li>
         </ul>
       </div>

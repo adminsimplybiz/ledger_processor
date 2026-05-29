@@ -41,6 +41,7 @@ export interface ParseResult {
   data: PayslipData[];
   monthLabel: string;
   sheetName: string;
+  extraHeaders?: string[];
 }
 
 export async function parsePayrollExcel(
@@ -66,12 +67,37 @@ export async function parsePayrollExcel(
   const headerRow = raw[config.headerRowIndex] as unknown[];
   const headers = headerRow.map((h) => String(h ?? '').trim());
 
+  // Detect headers present in the sheet but not mapped in company config
+  const isIgnoredHeader = (header: string) => {
+    const normalized = header.trim().toLowerCase();
+    return [
+      /^s\.?\s*no\.?$/i,
+      /^serial\s*(no|number)$/i,
+      /^remarks?$/i,
+      /^remark$/i,
+      /^where\s+to\s+add$/i,
+    ].some((regex) => regex.test(normalized));
+  };
+
+  const mappedHeaders = Object.values(config.columnMap)
+    .flatMap((h) => Array.isArray(h) ? h : [h])
+    .map((h) => String(h ?? '').trim().toLowerCase());
+  const extraHeaders = headers
+    .map((h) => String(h ?? '').trim())
+    .filter((h) => h && !mappedHeaders.includes(h.toLowerCase()) && !isIgnoredHeader(h));
+
   // Build field -> column index
   const fieldToIndex: Record<string, number> = {};
   for (const [field, excelHeader] of Object.entries(config.columnMap)) {
-    const want = String(excelHeader).trim().toLowerCase();
-    const idx = headers.findIndex((h) => h.trim().toLowerCase() === want);
-    if (idx >= 0) fieldToIndex[field] = idx;
+    const candidates = Array.isArray(excelHeader) ? excelHeader : [excelHeader];
+    for (const rawHeader of candidates) {
+      const want = String(rawHeader).trim().toLowerCase();
+      const idx = headers.findIndex((h) => h.trim().toLowerCase() === want);
+      if (idx >= 0) {
+        fieldToIndex[field] = idx;
+        break;
+      }
+    }
   }
 
   const get = (row: unknown[], field: string): unknown => {
@@ -79,62 +105,100 @@ export async function parsePayrollExcel(
     return i >= 0 ? row[i] : undefined;
   };
 
+  const getStringIfPresent = (row: unknown[], field: string): string | undefined => {
+    const value = get(row, field);
+    return value === undefined || value === null || String(value).trim() === '' ? undefined : String(value).trim();
+  };
+
+  const getNumberIfPresent = (row: unknown[], field: string): number | undefined => {
+    const idx = fieldToIndex[field];
+    if (idx === undefined) return undefined;
+    const value = row[idx];
+    if (value === undefined || value === null || String(value).trim() === '') return undefined;
+    return cleanNum(value);
+  };
+
   const result: PayslipData[] = [];
 
   for (let r = config.headerRowIndex + 1; r < raw.length; r++) {
     const row = raw[r] as unknown[];
-    const name = String(get(row, 'employeeName') ?? '').trim();
+    const name = getStringIfPresent(row, 'employeeName');
     if (!name) continue;
 
-    const basic = cleanNum(get(row, 'basic'));
-    const hra = cleanNum(get(row, 'hra'));
-    const grossEarning = cleanNum(get(row, 'grossEarning')) || (basic + hra + cleanNum(get(row, 'conveyance')) + cleanNum(get(row, 'medicalAllowance')) + cleanNum(get(row, 'childrenAllowance')) + cleanNum(get(row, 'lta')) + cleanNum(get(row, 'specialAllowance')) + cleanNum(get(row, 'arrears')) + cleanNum(get(row, 'otherPayments')) + cleanNum(get(row, 'otherAllowances')) + cleanNum(get(row, 'statutoryBonus')) + cleanNum(get(row, 'telephoneAllowance')) + cleanNum(get(row, 'transportAllowance')) + cleanNum(get(row, 'arrearsSalary')));
+    const basic = getNumberIfPresent(row, 'basic');
+    const hra = getNumberIfPresent(row, 'hra');
+    const conveyance = getNumberIfPresent(row, 'conveyance');
+    const medicalAllowance = getNumberIfPresent(row, 'medicalAllowance');
+    const childrenAllowance = getNumberIfPresent(row, 'childrenAllowance');
+    const lta = getNumberIfPresent(row, 'lta');
+    const specialAllowance = getNumberIfPresent(row, 'specialAllowance');
+    const arrears = getNumberIfPresent(row, 'arrears');
+    const otherPayments = getNumberIfPresent(row, 'otherPayments');
+    const otherAllowances = getNumberIfPresent(row, 'otherAllowances');
+    const statutoryBonus = getNumberIfPresent(row, 'statutoryBonus');
+    const telephoneAllowance = getNumberIfPresent(row, 'telephoneAllowance');
+    const transportAllowance = getNumberIfPresent(row, 'transportAllowance');
+    const arrearsSalary = getNumberIfPresent(row, 'arrearsSalary');
+    const pfEmployer = getNumberIfPresent(row, 'pfEmployer');
+    const pfEmployee = getNumberIfPresent(row, 'pfEmployee');
+    const esi = getNumberIfPresent(row, 'esi');
+    const professionalTax = getNumberIfPresent(row, 'professionalTax');
+    const tds = getNumberIfPresent(row, 'tds');
+    const totalDeductions = getNumberIfPresent(row, 'totalDeductions');
+    const netPay = getNumberIfPresent(row, 'netPay');
+    const grossEarningRaw = getNumberIfPresent(row, 'grossEarning');
+    const totalEarningsRaw = getNumberIfPresent(row, 'totalEarnings');
 
-    const pfEmployer = cleanNum(get(row, 'pfEmployer'));
-    const totalEarnings = cleanNum(get(row, 'totalEarnings')) || grossEarning + pfEmployer;
-    const totalDeductions = cleanNum(get(row, 'totalDeductions'));
-    const netPay = cleanNum(get(row, 'netPay')) || totalEarnings - totalDeductions;
+    const grossEarning = grossEarningRaw ?? ((basic ?? 0) + (hra ?? 0) + (conveyance ?? 0) + (medicalAllowance ?? 0) + (childrenAllowance ?? 0) + (lta ?? 0) + (specialAllowance ?? 0) + (arrears ?? 0) + (otherPayments ?? 0) + (otherAllowances ?? 0) + (statutoryBonus ?? 0) + (telephoneAllowance ?? 0) + (transportAllowance ?? 0) + (arrearsSalary ?? 0));
+    const totalEarnings = totalEarningsRaw ?? ((grossEarning ?? 0) + (pfEmployer ?? 0));
+    const computedNetPay = totalEarnings - (totalDeductions ?? 0);
 
     result.push({
       employeeName: name,
-      designation: String(get(row, 'designation') ?? '').trim(),
-      empId: String(get(row, 'empId') ?? '').trim(),
-      location: String(get(row, 'location') ?? '').trim(),
+      designation: getStringIfPresent(row, 'designation') ?? '',
+      empId: getStringIfPresent(row, 'empId') ?? '',
+      location: getStringIfPresent(row, 'location') ?? '',
       dateOfJoining: formatExcelDate(get(row, 'dateOfJoining')),
-      effectiveDays: String(get(row, 'effectiveDays') ?? '').trim(),
-      daysInMonth: String(get(row, 'daysInMonth') ?? '').trim(),
-      lop: String(get(row, 'lop') ?? '').trim(),
-      bankName: String(get(row, 'bankName') ?? '').trim(),
-      bankAccount: String(get(row, 'bankAccount') ?? '').trim(),
-      ifscCode: String(get(row, 'ifscCode') ?? '').trim().replace(/\r\n/g, ''),
-      pfUan: String(get(row, 'pfUan') ?? '').trim(),
-      panNo: String(get(row, 'panNo') ?? '').trim(),
-      esiNo: fieldToIndex['esiNo'] >= 0 ? String(get(row, 'esiNo') ?? '').trim() : undefined,
+      effectiveDays: getStringIfPresent(row, 'effectiveDays') ?? '',
+      daysInMonth: getStringIfPresent(row, 'daysInMonth') ?? '',
+      lop: getStringIfPresent(row, 'lop') ?? '',
+      bankName: getStringIfPresent(row, 'bankName') ?? '',
+      bankAccount: getStringIfPresent(row, 'bankAccount') ?? '',
+      ifscCode: (getStringIfPresent(row, 'ifscCode') ?? '').replace(/\r\n/g, ''),
+      pfUan: getStringIfPresent(row, 'pfUan') ?? '',
+      panNo: getStringIfPresent(row, 'panNo') ?? '',
+      esiNo: fieldToIndex['esiNo'] >= 0 ? getStringIfPresent(row, 'esiNo') : undefined,
       monthLabel: monthFromSheetName(targetSheet) || targetSheet,
       basic,
       hra,
-      conveyance: cleanNum(get(row, 'conveyance')) || undefined,
-      medicalAllowance: cleanNum(get(row, 'medicalAllowance')) || undefined,
-      childrenAllowance: cleanNum(get(row, 'childrenAllowance')) || undefined,
-      statutoryBonus: cleanNum(get(row, 'statutoryBonus')) || undefined,
-      lta: cleanNum(get(row, 'lta')),
-      specialAllowance: cleanNum(get(row, 'specialAllowance')) || undefined,
-      telephoneAllowance: cleanNum(get(row, 'telephoneAllowance')) || undefined,
-      transportAllowance: cleanNum(get(row, 'transportAllowance')) || undefined,
-      arrearsSalary: cleanNum(get(row, 'arrearsSalary')) || undefined,
-      arrears: cleanNum(get(row, 'arrears')) || undefined,
-      otherPayments: cleanNum(get(row, 'otherPayments')) || undefined,
-      otherAllowances: cleanNum(get(row, 'otherAllowances')) || undefined,
+      conveyance,
+      medicalAllowance,
+      childrenAllowance,
+      statutoryBonus,
+      lta,
+      specialAllowance,
+      telephoneAllowance,
+      transportAllowance,
+      arrearsSalary,
+      arrears,
+      otherPayments,
+      otherAllowances,
       grossEarning,
       pfEmployer,
+      esi,
       totalEarnings,
-      pfEmployee: cleanNum(get(row, 'pfEmployee')),
-      professionalTax: cleanNum(get(row, 'professionalTax')),
-      tds: cleanNum(get(row, 'tds')),
+      pfEmployee,
+      professionalTax,
+      tds,
       totalDeductions,
-      netPay,
+      netPay: netPay ?? computedNetPay,
       companyName: config.companyName,
       companyAddress: config.companyAddress,
+      extraRaw: extraHeaders.reduce((acc: Record<string, number>, h) => {
+        const idx = headers.findIndex(x => x.trim().toLowerCase() === h.trim().toLowerCase());
+        if (idx >= 0) acc[h] = cleanNum(row[idx]);
+        return acc;
+      }, {}),
     });
   }
 
@@ -142,5 +206,6 @@ export async function parsePayrollExcel(
     data: result,
     monthLabel: monthFromSheetName(targetSheet) || targetSheet,
     sheetName: targetSheet,
+    extraHeaders: extraHeaders,
   };
 }

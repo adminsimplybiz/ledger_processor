@@ -17,37 +17,72 @@ const InfoRow = ({ label, value }: { label: string; value: string | number }) =>
 
 export const SunstripePayslip: React.FC<Props> = ({ data }) => {
   // Build earnings array from PayslipData
-  const earnings = [
-    { label: "BASIC", full: formatNum(data.basic), actual: formatNum(data.basic) },
-    { label: "HRA", full: formatNum(data.hra), actual: formatNum(data.hra) },
-    { label: "Conveyance", full: formatNum(data.conveyance ?? 0), actual: formatNum(data.conveyance ?? 0) },
-    { label: "Medical Allowance", full: formatNum(data.medicalAllowance ?? 0), actual: formatNum(data.medicalAllowance ?? 0) },
-    { label: "Children Education Allowance", full: formatNum(data.childrenAllowance ?? 0), actual: formatNum(data.childrenAllowance ?? 0) },
-    { label: "Leave Travel Allowance", full: formatNum(data.lta), actual: formatNum(data.lta) },
-    { label: "Special Allowance", full: formatNum(data.specialAllowance ?? 0), actual: formatNum(data.specialAllowance ?? 0) },
-  ];
+  const earnings: Array<{ label: string; full: string; actual: string }> = [];
+  if (typeof data.basic !== 'undefined') {
+    earnings.push({ label: 'BASIC', full: formatNum(data.basic), actual: formatNum(data.basic) });
+  }
+  if (typeof data.hra !== 'undefined') {
+    earnings.push({ label: 'HRA', full: formatNum(data.hra), actual: formatNum(data.hra) });
+  }
+  if (typeof data.conveyance !== 'undefined') {
+    earnings.push({ label: 'Conveyance', full: formatNum(data.conveyance), actual: formatNum(data.conveyance) });
+  }
+  if (typeof data.medicalAllowance !== 'undefined') {
+    earnings.push({ label: 'Medical Allowance', full: formatNum(data.medicalAllowance), actual: formatNum(data.medicalAllowance) });
+  }
+  if (typeof data.childrenAllowance !== 'undefined') {
+    earnings.push({ label: 'Children Education Allowance', full: formatNum(data.childrenAllowance), actual: formatNum(data.childrenAllowance) });
+  }
+  if (typeof data.lta !== 'undefined') {
+    earnings.push({ label: 'Leave Travel Allowance', full: formatNum(data.lta), actual: formatNum(data.lta) });
+  }
+  if (typeof data.specialAllowance !== 'undefined') {
+    earnings.push({ label: 'Special Allowance', full: formatNum(data.specialAllowance), actual: formatNum(data.specialAllowance) });
+  }
+  if (data.extraFieldsBySection && data.extraFieldsBySection['Earnings']) {
+    data.extraFieldsBySection['Earnings'].forEach(f => {
+      earnings.push({ label: f.label, full: formatNum(f.value), actual: formatNum(f.value) });
+    });
+  }
 
   // Build deductions array
-  const deductions = [
-    { label: "PROF TAX", amount: formatNum(data.professionalTax) },
-    { label: "Employer PF", amount: "-" },
-    { label: "Employee PF", amount: formatNum(data.pfEmployee) },
-    { label: "TDS", amount: formatNum(data.tds) },
-  ];
+  const deductions: Array<{ label: string; amount: string }> = [];
+  if (typeof data.professionalTax !== 'undefined') {
+    deductions.push({ label: 'PROF TAX', amount: formatNum(data.professionalTax) });
+  }
+  if (typeof data.pfEmployee !== 'undefined') {
+    deductions.push({ label: 'Employee PF', amount: formatNum(data.pfEmployee) });
+  }
+  if (typeof data.pfEmployer !== 'undefined') {
+    deductions.push({ label: 'Employer PF', amount: formatNum(data.pfEmployer) });
+  }
+  if (typeof data.tds !== 'undefined') {
+    deductions.push({ label: 'TDS', amount: formatNum(data.tds) });
+  }
+  if (data.extraFieldsBySection && data.extraFieldsBySection['Deductions']) {
+    data.extraFieldsBySection['Deductions'].forEach(f => {
+      deductions.push({ label: f.label, amount: formatNum(f.value) });
+    });
+  }
 
-  // Employer components
-  const employerComponents = [
-    { label: "Employer PF", full: formatNum(data.pfEmployer), actual: formatNum(data.pfEmployer) },
-    { label: "Employer PF arrears", full: "", actual: "" },
-    { label: "Employer ESI", full: "", actual: "" },
-  ];
+  const employerComponents: Array<{ label: string; full: string; actual: string }> = [];
+  if (typeof data.pfEmployer !== 'undefined') {
+    employerComponents.push({ label: 'Employer PF', full: formatNum(data.pfEmployer), actual: formatNum(data.pfEmployer) });
+  }
+  if (typeof data.esi !== 'undefined') {
+    employerComponents.push({ label: 'Employer ESI', full: formatNum(data.esi), actual: formatNum(data.esi) });
+  }
+  if (data.extraFieldsBySection && data.extraFieldsBySection['Employer Components']) {
+    data.extraFieldsBySection['Employer Components'].forEach(f => {
+      employerComponents.push({ label: f.label, full: formatNum(f.value), actual: formatNum(f.value) });
+    });
+  }
 
-  // Pad rows so table looks balanced
-  const maxRows = Math.max(earnings.length, deductions.length, 8);
+  const maxRows = Math.max(earnings.length, deductions.length, employerComponents.length);
   const rows = Array.from({ length: maxRows }).map((_, i) => ({
     earning: earnings[i] || { label: '', full: '', actual: '' },
     deduction: deductions[i] || { label: '', amount: '' }
-  }));
+  })).filter(row => row.earning.label || row.deduction.label);
 
   return (
     <>
@@ -163,6 +198,7 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
           table-layout: fixed;
           border-collapse: collapse;
         }
+
         .financial-table th, .financial-table td {
           padding: 10px 12px !important;
           vertical-align: middle !important;
@@ -262,7 +298,7 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
               <col className="col-ded-label" />
               <col className="col-ded-val" />
             </colgroup>
-            <thead>
+              <thead>
               <tr>
                 <th className="col-earn-label">Earnings</th>
                 <th className="col-earn-val center">Full</th>
@@ -270,8 +306,8 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
                 <th className="col-ded-label">Deductions</th>
                 <th className="col-ded-val center">Actual</th>
               </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
               {rows.map((row, idx) => (
                 <tr key={idx}>
                   <td className="col-earn-label">{row.earning.label}</td>
@@ -289,7 +325,6 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
                 <td className="col-ded-label bold">Total Deductions</td>
                 <td className="col-ded-val bold">{formatNum(data.totalDeductions)}</td>
               </tr>
-
               {employerComponents.map((comp, i) => (
                 <tr key={i}>
                   <td className="col-earn-label">{comp.label}</td>
@@ -317,9 +352,11 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
               {formatNum(data.netPay)}
             </div>
           </div>
-          <div className="net-words">
-            ({numberToWords(Math.round(data.netPay))})
-          </div>
+          {data.netPay !== undefined && (
+            <div className="net-words">
+              ({numberToWords(Math.round(data.netPay))})
+            </div>
+          )}
         </div>
         
         <div className="footer-note">This is a system generated payslip and does not require signature</div>

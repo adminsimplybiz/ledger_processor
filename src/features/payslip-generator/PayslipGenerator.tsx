@@ -37,6 +37,9 @@ export default function PayslipGenerator() {
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMappingModal, setShowMappingModal] = useState(false);
+  const [pendingExtraHeaders, setPendingExtraHeaders] = useState<string[]>([]);
+  const [mappingDraft, setMappingDraft] = useState<Record<string, string>>({});
 
   const getPdfBlob = async (data: PayslipData): Promise<{ blob: Blob; filename: string }> => {
     const div = document.createElement('div');
@@ -107,13 +110,46 @@ export default function PayslipGenerator() {
     try {
       const sheet = showSheetInput ? selectedSheet : undefined;
       const result = await parsePayrollExcel(file, companyId, sheet);
+      // If there are extra headers not in company mapping, prompt user to map them
+      const extras = result.extraHeaders || [];
+      const storageKey = `payslip_mappings:${companyId}`;
+      const existing = window.localStorage.getItem(storageKey);
+      const savedMapping: Record<string, string> | null = existing ? JSON.parse(existing) : null;
+
+      if (extras.length > 0 && (!savedMapping || !extras.every(h => savedMapping[h]))) {
+        // Show modal to map these headers to sections
+        setPendingExtraHeaders(extras);
+        // initialize draft from savedMapping if present
+        setMappingDraft(savedMapping || {});
+        setIsProcessing(false);
+        setShowMappingModal(true);
+        return;
+      }
       const year = new Date().getFullYear();
       const monthYearLabel = `${selectedMonth} ${year}`;
       // Override monthLabel with selected month + year (e.g. "January 2026")
-      const processedData = result.data.map(emp => ({
-        ...emp,
-        monthLabel: monthYearLabel
-      }));
+      // Apply any saved mapping to organize extra fields by section
+      const storage = window.localStorage.getItem(`payslip_mappings:${companyId}`);
+      const mapping: Record<string, string> | null = storage ? JSON.parse(storage) : null;
+
+      const processedData = result.data.map(emp => {
+        const extraFieldsBySection: Record<string, Array<{ label: string; value: number }>> = {};
+        if (emp.extraRaw) {
+          for (const h of Object.keys(emp.extraRaw)) {
+            const sectionRaw = mapping ? mapping[h] : undefined;
+            if (sectionRaw === 'Exclude') continue; // user chose to not include this column
+            const section = sectionRaw || 'Other';
+            if (!extraFieldsBySection[section]) extraFieldsBySection[section] = [];
+            extraFieldsBySection[section].push({ label: h, value: emp.extraRaw[h] });
+          }
+        }
+
+        return {
+          ...emp,
+          monthLabel: monthYearLabel,
+          extraFieldsBySection: Object.keys(extraFieldsBySection).length ? extraFieldsBySection : undefined,
+        };
+      });
       setPayslips(processedData);
       setMonthLabel(monthYearLabel);
     } catch (e) {
@@ -122,6 +158,65 @@ export default function PayslipGenerator() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Sections supported per template/company. This can be expanded if templates add more sections.
+  const TEMPLATE_SECTIONS_BY_COMPANY: Record<string, string[]> = {
+    sunstripe: ['Earnings', 'Deductions', 'Employer Components', 'Other'],
+    valuestream: ['Earnings', 'Deductions', 'Other'],
+    vira: ['Earnings', 'Deductions', 'Other'],
+  };
+
+  const onSaveMapping = (save: Record<string, string>) => {
+    const storageKey = `payslip_mappings:${companyId}`;
+    window.localStorage.setItem(storageKey, JSON.stringify(save));
+    setShowMappingModal(false);
+    // Re-run processing flow to apply mapping
+    setTimeout(() => handleProcess(), 50);
+  };
+
+  const onCancelMapping = () => {
+    setShowMappingModal(false);
+    // user cancelled mapping; proceed without mapping (extras will be ignored)
+    setTimeout(() => handleProcess(), 50);
+  };
+
+  const MappingModal: React.FC = () => {
+    const sections = TEMPLATE_SECTIONS_BY_COMPANY[companyId] || ['Earnings', 'Deductions', 'Other'];
+    const [localDraft, setLocalDraft] = useState<Record<string, string>>(mappingDraft || {});
+
+    const setForHeader = (header: string, section: string) => {
+      setLocalDraft(prev => ({ ...prev, [header]: section }));
+    };
+
+    return showMappingModal ? (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-11/12 max-w-2xl">
+          <h3 className="text-lg font-semibold mb-2">Map new columns to payslip sections</h3>
+          <p className="text-sm text-gray-600 mb-4">We found the following new columns in the sheet. Please select which section each should appear in on the payslip. If a column shouldn't appear on the payslip, choose "Do not include".</p>
+          <div className="space-y-3 max-h-72 overflow-y-auto">
+            {pendingExtraHeaders.map((h) => (
+              <div key={h} className="flex items-center gap-3">
+                <div className="flex-1">{h}</div>
+                <select
+                  value={localDraft[h] || ''}
+                  onChange={(e) => setForHeader(h, e.target.value)}
+                  className="px-3 py-2 border rounded"
+                >
+                  <option value="">Select section</option>
+                  {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="Exclude">Do not include</option>
+                </select>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button onClick={onCancelMapping} className="px-4 py-2 border rounded">Cancel</button>
+            <button onClick={() => onSaveMapping(localDraft)} className="px-4 py-2 bg-primary-600 text-white rounded">Save Mapping</button>
+          </div>
+        </div>
+      </div>
+    ) : null;
   };
 
   const openPreview = (data: PayslipData) => {
@@ -302,7 +397,7 @@ export default function PayslipGenerator() {
                     <tr key={i} className="hover:bg-gray-50">
                       <td className="border px-4 py-2">{p.employeeName}</td>
                       <td className="border px-4 py-2">{p.empId}</td>
-                      <td className="border px-4 py-2 text-right">{p.netPay.toLocaleString('en-IN')}</td>
+                      <td className="border px-4 py-2 text-right">{p.netPay !== undefined ? p.netPay.toLocaleString('en-IN') : ''}</td>
                       <td className="border px-4 py-2">
                         <div className="flex gap-2 justify-center">
                           <button
@@ -327,6 +422,7 @@ export default function PayslipGenerator() {
           </div>
         )}
       </div>
+      {showMappingModal && <MappingModal />}
     </div>
   );
 }

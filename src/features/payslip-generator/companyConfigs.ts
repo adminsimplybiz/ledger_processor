@@ -14,7 +14,7 @@ export interface CompanyConfig {
   /** Name of sheet containing payroll (used when multiple sheets exist) */
   defaultSheetName: string;
   /** Maps logical field names to Excel column headers. Match is trim + case-insensitive. */
-  columnMap: Record<string, string>;
+  columnMap: Record<string, string | string[]>;
   /** Company name for payslip header */
   companyName: string;
   /** Company address for payslip footer */
@@ -54,8 +54,8 @@ export const COMPANIES: CompanyConfig[] = [
       otherPayments: 'Other Payments',
       grossEarning: 'Gross Earning',
       totalEarnings: 'Gross Earning',
-      pfEmployee: 'PF',
-      pfEmployer: 'PF',
+      pfEmployee: ['PF Employee', 'Employee PF', 'PF'],
+      pfEmployer: ['PF Employer', 'PF Employor', 'Employer PF', 'PF'],
       esi: 'ESI',
       professionalTax: 'PT',
       tds: 'TDS',

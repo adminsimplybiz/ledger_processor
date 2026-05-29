@@ -21,13 +21,13 @@ export interface PayslipData {
   monthLabel: string;
 
   // Earnings (all numeric as number)
-  basic: number;
-  hra: number;
+  basic?: number;
+  hra?: number;
   conveyance?: number;
   medicalAllowance?: number;
   childrenAllowance?: number;
   statutoryBonus?: number;
-  lta: number;
+  lta?: number;
   specialAllowance?: number;
   telephoneAllowance?: number;
   transportAllowance?: number;
@@ -35,18 +35,23 @@ export interface PayslipData {
   arrears?: number;
   otherPayments?: number;
   otherAllowances?: number;
-  grossEarning: number;
-  pfEmployer: number;
-  totalEarnings: number;
+  grossEarning?: number;
+  pfEmployer?: number;
+  esi?: number;
+  totalEarnings?: number;
 
   // Deductions
-  pfEmployee: number;
-  professionalTax: number;
-  tds: number;
-  totalDeductions: number;
-  netPay: number;
+  pfEmployee?: number;
+  professionalTax?: number;
+  tds?: number;
+  totalDeductions?: number;
+  netPay?: number;
 
   // Meta
   companyName: string;
   companyAddress: string;
+  // Raw extra columns detected in the sheet not mapped in company config
+  extraRaw?: Record<string, number>;
+  // After user mapping, extra fields organized by template section (e.g. Earnings, Deductions)
+  extraFieldsBySection?: Record<string, Array<{ label: string; value: number }>>;
 }
