@@ -110,34 +110,37 @@ export default function PayslipGenerator() {
     try {
       const sheet = showSheetInput ? selectedSheet : undefined;
       const result = await parsePayrollExcel(file, companyId, sheet);
-      // If there are extra headers not in company mapping, prompt user to map them
-      const extras = result.extraHeaders || [];
-      const storageKey = `payslip_mappings:${companyId}`;
-      const existing = window.localStorage.getItem(storageKey);
-      const savedMapping: Record<string, string> | null = existing ? JSON.parse(existing) : null;
-
-      if (extras.length > 0 && (!savedMapping || !extras.every(h => savedMapping[h]))) {
-        // Show modal to map these headers to sections
-        setPendingExtraHeaders(extras);
-        // initialize draft from savedMapping if present
-        setMappingDraft(savedMapping || {});
-        setIsProcessing(false);
-        setShowMappingModal(true);
-        return;
-      }
       const year = new Date().getFullYear();
       const monthYearLabel = `${selectedMonth} ${year}`;
-      // Override monthLabel with selected month + year (e.g. "January 2026")
-      // Apply any saved mapping to organize extra fields by section
-      const storage = window.localStorage.getItem(`payslip_mappings:${companyId}`);
-      const mapping: Record<string, string> | null = storage ? JSON.parse(storage) : null;
+
+      // Column mapping / customization is Sunstripe-only
+      if (companyId === 'sunstripe') {
+        const extras = result.extraHeaders || [];
+        const storageKey = `payslip_mappings:${companyId}`;
+        const existing = window.localStorage.getItem(storageKey);
+        const savedMapping: Record<string, string> | null = existing ? JSON.parse(existing) : null;
+
+        if (extras.length > 0 && (!savedMapping || !extras.every(h => savedMapping[h]))) {
+          setPendingExtraHeaders(extras);
+          setMappingDraft(savedMapping || {});
+          setIsProcessing(false);
+          setShowMappingModal(true);
+          return;
+        }
+      }
 
       const processedData = result.data.map(emp => {
+        if (companyId !== 'sunstripe') {
+          return { ...emp, monthLabel: monthYearLabel };
+        }
+
+        const storage = window.localStorage.getItem(`payslip_mappings:${companyId}`);
+        const mapping: Record<string, string> | null = storage ? JSON.parse(storage) : null;
         const extraFieldsBySection: Record<string, Array<{ label: string; value: number }>> = {};
         if (emp.extraRaw) {
           for (const h of Object.keys(emp.extraRaw)) {
             const sectionRaw = mapping ? mapping[h] : undefined;
-            if (sectionRaw === 'Exclude') continue; // user chose to not include this column
+            if (sectionRaw === 'Exclude') continue;
             const section = sectionRaw || 'Other';
             if (!extraFieldsBySection[section]) extraFieldsBySection[section] = [];
             extraFieldsBySection[section].push({ label: h, value: emp.extraRaw[h] });
@@ -163,8 +166,6 @@ export default function PayslipGenerator() {
   // Sections supported per template/company. This can be expanded if templates add more sections.
   const TEMPLATE_SECTIONS_BY_COMPANY: Record<string, string[]> = {
     sunstripe: ['Earnings', 'Deductions', 'Employer Components', 'Other'],
-    valuestream: ['Earnings', 'Deductions', 'Other'],
-    vira: ['Earnings', 'Deductions', 'Other'],
   };
 
   const onSaveMapping = (save: Record<string, string>) => {

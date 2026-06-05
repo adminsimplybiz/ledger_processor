@@ -129,7 +129,7 @@ export const COMPANIES: CompanyConfig[] = [
       lta: 'Leave travel allowance',
       telephoneAllowance: 'Telephone allowance',
       transportAllowance: 'Transport Allowance',
-      arrearsSalary: 'Arrers Salary',
+      arrearsSalary: 'Bonus',
       otherAllowances: 'Other allowances',
       grossEarning: 'Gross salary',
       totalEarnings: 'Total earnings',
