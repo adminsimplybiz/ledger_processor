@@ -36,6 +36,8 @@ export interface PayslipData {
   otherPayments?: number;
   otherAllowances?: number;
   grossEarning?: number;
+  /** Earnings rows parsed from Excel headers (dynamicEarnings companies) */
+  earningsRows?: Array<{ label: string; value: number }>;
   pfEmployer?: number;
   esi?: number;
   totalEarnings?: number;

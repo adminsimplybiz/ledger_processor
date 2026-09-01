@@ -16,15 +16,12 @@ const InfoRow = ({ label, value }: { label: string; value: string | number }) =>
 );
 
 export const ValueStreamPayslip: React.FC<Props> = ({ data }) => {
-  // Build earnings array from PayslipData (Value Stream specific)
-  const earnings = [
-    { label: "BASIC", full: formatNum(data.basic), actual: formatNum(data.basic) },
-    { label: "HRA", full: formatNum(data.hra), actual: formatNum(data.hra) },
-    { label: "Children Allowance", full: formatNum(data.childrenAllowance ?? 0), actual: formatNum(data.childrenAllowance ?? 0) },
-    { label: "Statutory Bonus", full: formatNum(data.statutoryBonus ?? 0), actual: formatNum(data.statutoryBonus ?? 0) },
-    { label: "Leave Travel Allowance", full: formatNum(data.lta), actual: formatNum(data.lta) },
-    { label: "Other allowances", full: formatNum(data.otherAllowances ?? 0), actual: formatNum(data.otherAllowances ?? 0) },
-  ];
+  // Earnings come from Excel column headers between Basic and Gross salary (includes Variable Pay, etc.)
+  const earnings = (data.earningsRows ?? []).map(({ label, value }) => ({
+    label,
+    full: formatNum(value),
+    actual: formatNum(value),
+  }));
 
   // Build deductions array
   const deductions = [

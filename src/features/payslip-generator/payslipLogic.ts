@@ -25,6 +25,38 @@ const formatExcelDate = (v: unknown): string => {
   return String(v);
 };
 
+const parseDynamicEarnings = (
+  row: unknown[],
+  headers: string[],
+  fieldToIndex: Record<string, number>,
+  startField: string,
+  endField: string,
+): Array<{ label: string; value: number }> => {
+  const startIdx = fieldToIndex[startField];
+  const endIdx = fieldToIndex[endField];
+  if (startIdx === undefined || endIdx === undefined || startIdx >= endIdx) return [];
+
+  const rows: Array<{ label: string; value: number }> = [];
+  for (let i = startIdx; i < endIdx; i++) {
+    const label = headers[i]?.trim();
+    if (!label) continue;
+    rows.push({ label, value: cleanNum(row[i]) });
+  }
+  return rows;
+};
+
+const earningsHeaderIndices = (
+  headers: string[],
+  fieldToIndex: Record<string, number>,
+  startField: string,
+  endField: string,
+): Set<number> => {
+  const startIdx = fieldToIndex[startField];
+  const endIdx = fieldToIndex[endField];
+  if (startIdx === undefined || endIdx === undefined || startIdx >= endIdx) return new Set();
+  return new Set(Array.from({ length: endIdx - startIdx }, (_, i) => startIdx + i));
+};
+
 /** Derive month label from sheet name, e.g. "January 2026" -> "Jan 2026" */
 const monthFromSheetName = (name: string): string => {
   const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -82,9 +114,6 @@ export async function parsePayrollExcel(
   const mappedHeaders = Object.values(config.columnMap)
     .flatMap((h) => Array.isArray(h) ? h : [h])
     .map((h) => String(h ?? '').trim().toLowerCase());
-  const extraHeaders = headers
-    .map((h) => String(h ?? '').trim())
-    .filter((h) => h && !mappedHeaders.includes(h.toLowerCase()) && !isIgnoredHeader(h));
 
   // Build field -> column index
   const fieldToIndex: Record<string, number> = {};
@@ -99,6 +128,19 @@ export async function parsePayrollExcel(
       }
     }
   }
+
+  const dynamicEarningsIndices = config.dynamicEarnings
+    ? earningsHeaderIndices(
+        headers,
+        fieldToIndex,
+        config.earningsStartField ?? 'basic',
+        config.earningsEndField ?? 'grossEarning',
+      )
+    : new Set<number>();
+  const extraHeaders = headers
+    .map((h, idx) => ({ h: String(h ?? '').trim(), idx }))
+    .filter(({ h, idx }) => h && !mappedHeaders.includes(h.toLowerCase()) && !isIgnoredHeader(h) && !dynamicEarningsIndices.has(idx))
+    .map(({ h }) => h);
 
   const get = (row: unknown[], field: string): unknown => {
     const i = fieldToIndex[field];
@@ -149,7 +191,18 @@ export async function parsePayrollExcel(
     const grossEarningRaw = getNumberIfPresent(row, 'grossEarning');
     const totalEarningsRaw = getNumberIfPresent(row, 'totalEarnings');
 
-    const grossEarning = grossEarningRaw ?? ((basic ?? 0) + (hra ?? 0) + (conveyance ?? 0) + (medicalAllowance ?? 0) + (childrenAllowance ?? 0) + (lta ?? 0) + (specialAllowance ?? 0) + (arrears ?? 0) + (otherPayments ?? 0) + (otherAllowances ?? 0) + (statutoryBonus ?? 0) + (telephoneAllowance ?? 0) + (transportAllowance ?? 0) + (arrearsSalary ?? 0));
+    const earningsRows = config.dynamicEarnings
+      ? parseDynamicEarnings(
+          row,
+          headers,
+          fieldToIndex,
+          config.earningsStartField ?? 'basic',
+          config.earningsEndField ?? 'grossEarning',
+        )
+      : undefined;
+    const earningsFromRows = earningsRows?.reduce((sum, item) => sum + item.value, 0);
+
+    const grossEarning = grossEarningRaw ?? earningsFromRows ?? ((basic ?? 0) + (hra ?? 0) + (conveyance ?? 0) + (medicalAllowance ?? 0) + (childrenAllowance ?? 0) + (lta ?? 0) + (specialAllowance ?? 0) + (arrears ?? 0) + (otherPayments ?? 0) + (otherAllowances ?? 0) + (statutoryBonus ?? 0) + (telephoneAllowance ?? 0) + (transportAllowance ?? 0) + (arrearsSalary ?? 0));
     const totalEarnings = totalEarningsRaw ?? ((grossEarning ?? 0) + (pfEmployer ?? 0));
     const computedNetPay = totalEarnings - (totalDeductions ?? 0);
 
@@ -183,6 +236,7 @@ export async function parsePayrollExcel(
       arrears,
       otherPayments,
       otherAllowances,
+      earningsRows,
       grossEarning,
       pfEmployer,
       esi,

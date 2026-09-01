@@ -15,6 +15,12 @@ export interface CompanyConfig {
   defaultSheetName: string;
   /** Maps logical field names to Excel column headers. Match is trim + case-insensitive. */
   columnMap: Record<string, string | string[]>;
+  /** When true, earnings rows are read from all columns between earningsStartField and earningsEndField using Excel header labels. */
+  dynamicEarnings?: boolean;
+  /** First earnings column marker in columnMap (inclusive). Default: basic */
+  earningsStartField?: string;
+  /** Column after last earnings marker in columnMap (exclusive). Default: grossEarning */
+  earningsEndField?: string;
   /** Company name for payslip header */
   companyName: string;
   /** Company address for payslip footer */
@@ -70,6 +76,7 @@ export const COMPANIES: CompanyConfig[] = [
     label: 'Value Stream',
     headerRowIndex: 1,
     defaultSheetName: 'Payregister',
+    dynamicEarnings: true,
     companyName: 'VALUESTREAM ANALYTICS PRIVATE LIMITED',
     companyAddress: 'FLAT NO 902 BLOCK A, HALLMARK VICINIA, Gachibowli, K.V.Rangareddy, Seri Lingampally, Telangana, India, 500032',
     columnMap: {
@@ -87,11 +94,6 @@ export const COMPANIES: CompanyConfig[] = [
       panNo: 'PAN No.',
       lop: 'LOP',
       basic: 'Basic',
-      hra: 'HRA',
-      childrenAllowance: 'Children Allowance',
-      statutoryBonus: 'Statutory bonus',
-      lta: 'Leave travel allowance',
-      otherAllowances: 'Other allowances',
       grossEarning: 'Gross salary',
       totalEarnings: 'Total earnings',
       pfEmployer: 'PF Employer',
