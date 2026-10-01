@@ -111,8 +111,8 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
           position: absolute;
           left: 0;
           top: 0;
-          width: 100px;
-          height: 100px;
+          width: 180px;
+          height: 48px;
           display: flex;
           align-items: center;
           justify-content: flex-start;
