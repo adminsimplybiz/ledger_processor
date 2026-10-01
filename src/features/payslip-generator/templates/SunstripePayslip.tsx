@@ -101,18 +101,15 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
 
         .header-container {
           display: flex;
-          justify-content: center;
-          align-items: flex-start;
+          align-items: center;
           margin-bottom: 5px;
-          position: relative;
+          gap: 8px;
         }
         
         .logo-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 180px;
-          height: 48px;
+          flex: 0 0 160px;
+          width: 160px;
+          height: 40px;
           display: flex;
           align-items: center;
           justify-content: flex-start;
@@ -125,23 +122,21 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
           object-fit: contain;
           display: block;
         }
-        
-        .logo-text {
-          font-size: 18px;
-          font-weight: bold;
-          color: #d62d20;
-          font-family: Arial, sans-serif;
+        .header-spacer {
+          flex: 0 0 160px;
+          width: 160px;
         }
 
         .company-details {
+          flex: 1;
           text-align: center;
-          width: 100%;
+          min-width: 0;
         }
 
         .company-name {
           font-size: 16px;
           font-weight: bold;
-          margin: 10px 0 5px 0;
+          margin: 0 0 5px 0;
           text-transform: uppercase;
         }
 
@@ -262,6 +257,7 @@ export const SunstripePayslip: React.FC<Props> = ({ data }) => {
               }
             </p>
           </div>
+          <div className="header-spacer" aria-hidden="true" />
         </div>
         
         <div className="payslip-title">Payslip for {data.monthLabel}</div>
