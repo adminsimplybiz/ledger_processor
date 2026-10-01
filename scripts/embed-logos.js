@@ -5,7 +5,7 @@ const publicDir = path.join(__dirname, '..', 'public');
 const outPath = path.join(__dirname, '..', 'src', 'features', 'payslip-generator', 'payslipLogos.ts');
 
 const files = [
-  { name: 'sunstripe', file: 'sunstripe logo.jpg', mime: 'image/jpeg' },
+  { name: 'sunstripe', file: 'sunstripe logo.png', mime: 'image/png' },
   { name: 'valuestream', file: 'valuestream logo.png', mime: 'image/png' },
   { name: 'vira', file: 'Vira insight logo.png', mime: 'image/png' },
 ];
