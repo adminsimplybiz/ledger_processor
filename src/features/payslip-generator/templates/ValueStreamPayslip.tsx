@@ -29,6 +29,7 @@ export const ValueStreamPayslip: React.FC<Props> = ({ data }) => {
     { label: "Employer PF", amount: formatNum(data.pfEmployer) },
     { label: "Employee PF", amount: formatNum(data.pfEmployee) },
     { label: "TDS", amount: formatNum(data.tds) },
+    { label: "NPS", amount: formatNum(data.nps ?? 0) },
   ];
 
   // Employer components

@@ -99,6 +99,7 @@ export const COMPANIES: CompanyConfig[] = [
       pfEmployer: 'PF Employer',
       pfEmployee: 'PF Employee',
       professionalTax: 'Professional Tax',
+      nps: 'NPS',
       tds: 'TDS',
       totalDeductions: 'Total deductions',
       netPay: 'Net pay for the Month',

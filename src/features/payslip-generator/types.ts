@@ -45,6 +45,7 @@ export interface PayslipData {
   // Deductions
   pfEmployee?: number;
   professionalTax?: number;
+  nps?: number;
   tds?: number;
   totalDeductions?: number;
   netPay?: number;

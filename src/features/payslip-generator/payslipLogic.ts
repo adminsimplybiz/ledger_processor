@@ -185,6 +185,7 @@ export async function parsePayrollExcel(
     const pfEmployee = getNumberIfPresent(row, 'pfEmployee');
     const esi = getNumberIfPresent(row, 'esi');
     const professionalTax = getNumberIfPresent(row, 'professionalTax');
+    const nps = getNumberIfPresent(row, 'nps');
     const tds = getNumberIfPresent(row, 'tds');
     const totalDeductions = getNumberIfPresent(row, 'totalDeductions');
     const netPay = getNumberIfPresent(row, 'netPay');
@@ -243,6 +244,7 @@ export async function parsePayrollExcel(
       totalEarnings,
       pfEmployee,
       professionalTax,
+      nps,
       tds,
       totalDeductions,
       netPay: netPay ?? computedNetPay,
